@@ -31,6 +31,7 @@ import {
   type LoaderFunction,
   type NavigateFunction,
   NavLink,
+  Outlet,
   redirect,
   useFetcher,
   useFetchers,
@@ -40,10 +41,10 @@ import {
   useSearchParams,
 } from 'react-router-dom';
 
+// import { ToolTip as InsoToolTip } from '../../../src/ui/components/tooltip';
 import { DEFAULT_SIDEBAR_SIZE, getProductName, SORT_ORDERS, type SortOrder, sortOrderName } from '../../common/constants';
 import { type ChangeBufferEvent, database as db } from '../../common/database';
 import { generateId, isNotNullOrUndefined } from '../../common/misc';
-import { LandingPage } from '../../common/sentry';
 import type { PlatformKeyCombinations } from '../../common/settings';
 import type { GrpcMethodInfo } from '../../main/ipc/grpc';
 import * as models from '../../models';
@@ -65,7 +66,6 @@ import {
   isWebSocketRequestId,
   type WebSocketRequest,
 } from '../../models/websocket-request';
-import { isScratchpad } from '../../models/workspace';
 import { invariant } from '../../utils/invariant';
 import { DropdownHint } from '../components/base/dropdown/dropdown-hint';
 import { RequestActionsDropdown } from '../components/dropdowns/request-actions-dropdown';
@@ -138,7 +138,7 @@ const INITIAL_GRPC_REQUEST_STATE = {
   error: undefined,
   methods: [],
 };
-export const loader: LoaderFunction = async ({ params }) => {
+export const loader: LoaderFunction = async ({ params, request }) => {
   if (!params.requestId && !params.requestGroupId) {
     const { projectId, workspaceId, organizationId } = params;
     invariant(workspaceId, 'Workspace ID is required');
@@ -150,7 +150,8 @@ export const loader: LoaderFunction = async ({ params }) => {
     invariant(activeWorkspaceMeta, 'Workspace meta not found');
     const activeRequestId = activeWorkspaceMeta.activeRequestId;
     const activeRequest = activeRequestId ? await models.request.getById(activeRequestId) : null;
-    if (activeRequest) {
+    const isDisplayingRunner = request.url.endsWith('/runner/');
+    if (activeRequest && !isDisplayingRunner) {
       return redirect(`/organization/${organizationId}/project/${projectId}/workspace/${workspaceId}/debug/request/${activeRequestId}`);
     }
   }
@@ -484,8 +485,8 @@ export const Debug: FC = () => {
       // If the target is a folder and we insert after it we want to add that item to the folder
       const isMovingItemInsideFolder = isRequestGroup(targetItem.doc) && event.target.dropPosition === 'after';
       if (isMovingItemInsideFolder) {
-      // there is no item before we move the item to the beginning
-      // If there are children find the first child key and use a lower one
+        // there is no item before we move the item to the beginning
+        // If there are children find the first child key and use a lower one
         // otherwise use whatever
         const children = collection.filter(r => r.doc.parentId === targetId);
 
@@ -667,11 +668,11 @@ export const Debug: FC = () => {
           icon: 'terminal',
           action: () => setPasteCurlModalOpen(true),
         },
-          {
-            id: 'from-file',
-            name: 'From File',
-            icon: 'file-import',
-            action: () => setIsImportModalOpen(true),
+        {
+          id: 'from-file',
+          name: 'From File',
+          icon: 'file-import',
+          action: () => setIsImportModalOpen(true),
         }],
       }];
 
@@ -724,33 +725,41 @@ export const Debug: FC = () => {
     }
   }, [settings.forceVerticalLayout, direction]);
 
-  useEffect(() => {
-    if (isScratchpad(activeWorkspace)) {
-      window.main.landingPageRendered(LandingPage.Scratchpad);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const onRunCollection = () => {
+    navigate(`/organization/${organizationId}/project/${activeWorkspace.parentId}/workspace/${activeWorkspace._id}/debug/runner/`);
+  };
 
   return (
     <PanelGroup ref={sidebarPanelRef} autoSaveId="insomnia-sidebar" id="wrapper" className='new-sidebar w-full h-full text-[--color-font]' direction='horizontal'>
       <Panel id="sidebar" className='sidebar theme--sidebar' maxSize={40} minSize={10} collapsible>
         <div className="flex flex-1 flex-col overflow-hidden divide-solid divide-y divide-[--hl-md]">
           <div className="flex flex-col items-start">
-            <Breadcrumbs className='flex h-[--line-height-sm] list-none items-center m-0 gap-2 border-solid border-[--hl-md] border-b p-[--padding-sm] font-bold w-full'>
-              <Breadcrumb className="flex select-none items-center gap-2 text-[--color-font] h-full outline-none data-[focused]:outline-none">
-                <NavLink
-                  data-testid="project"
-                  className="px-1 py-1 aspect-square h-7 flex flex-shrink-0 outline-none data-[focused]:outline-none items-center justify-center gap-2 aria-pressed:bg-[--hl-sm] rounded-sm text-[--color-font] hover:bg-[--hl-xs] focus:ring-inset ring-1 ring-transparent focus:ring-[--hl-md] transition-all text-sm"
-                  to={`/organization/${organizationId}/project/${activeProject._id}`}
-                >
-                  <Icon className='text-xs' icon="chevron-left" />
-                </NavLink>
-                <span aria-hidden role="separator" className='text-[--hl-lg] h-4 outline outline-1' />
-              </Breadcrumb>
-              <Breadcrumb className="flex truncate select-none items-center gap-2 text-[--color-font] h-full outline-none data-[focused]:outline-none">
-                <WorkspaceDropdown />
-              </Breadcrumb>
-            </Breadcrumbs>
+            <div className='flex w-full'>
+              <Breadcrumbs className='flex h-[--line-height-sm] list-none items-center m-0 gap-2 border-solid border-[--hl-md] border-b p-[--padding-sm] font-bold w-full'>
+                <Breadcrumb className="flex select-none items-center gap-2 text-[--color-font] h-full outline-none data-[focused]:outline-none">
+                  <NavLink
+                    data-testid="project"
+                    className="px-1 py-1 aspect-square h-7 flex flex-shrink-0 outline-none data-[focused]:outline-none items-center justify-center gap-2 aria-pressed:bg-[--hl-sm] rounded-sm text-[--color-font] hover:bg-[--hl-xs] focus:ring-inset ring-1 ring-transparent focus:ring-[--hl-md] transition-all text-sm"
+                    to={`/organization/${organizationId}/project/${activeProject._id}`}
+                  >
+                    <Icon className='text-xs' icon="chevron-left" />
+                  </NavLink>
+                  <span aria-hidden role="separator" className='text-[--hl-lg] h-4 outline outline-1' />
+                </Breadcrumb>
+                <Breadcrumb className="flex truncate select-none items-center gap-2 text-[--color-font] h-full outline-none data-[focused]:outline-none">
+                  <WorkspaceDropdown />
+                </Breadcrumb>
+                <Breadcrumb className="flex text-sm truncate select-none items-center justify-self-end ml-auto mr-2.5 gap-2 text-[--color-font] h-full outline-none data-[focused]:outline-none">
+                  {/* <InsoToolTip
+                    position="top"
+                    message={'Run collection'}
+                    className="border select-none text-sm max-w-xs border-solid border-[--hl-sm] shadow-lg bg-[--color-bg] text-[--color-font] px-4 py-2 rounded-md overflow-y-auto max-h-[85vh] focus:outline-none"
+                  > */}
+                    <Icon icon='circle-play' onClick={onRunCollection} />
+                  {/* </InsoToolTip> */}
+                </Breadcrumb>
+              </Breadcrumbs>
+            </div>
             <div className='flex flex-col items-start gap-2 p-[--padding-sm] w-full'>
               <div className="flex w-full items-center gap-2 justify-between">
                 <EnvironmentPicker
@@ -1102,7 +1111,7 @@ export const Debug: FC = () => {
       <PanelResizeHandle className='h-full w-[1px] bg-[--hl-md]' />
       <Panel>
         <PanelGroup autoSaveId="insomnia-panels" direction={direction}>
-          <Panel id="pane-one" minSize={10} className='pane-one theme--pane'>
+          <Panel id="pane-one" className='pane-one theme--pane'>
             {workspaceId ? (
               <ErrorBoundary showAlert>
                 {isRequestGroupId(requestGroupId) && (
@@ -1138,25 +1147,28 @@ export const Debug: FC = () => {
               </ErrorBoundary>
             ) : null}
           </Panel>
-          {activeRequest ? (<>
-            <PanelResizeHandle className={direction === 'horizontal' ? 'h-full w-[1px] bg-[--hl-md]' : 'w-full h-[1px] bg-[--hl-md]'} />
-            <Panel id="pane-two" minSize={10} className='pane-two theme--pane'>
-              <ErrorBoundary showAlert>
-                {activeRequest && isGrpcRequest(activeRequest) && grpcState && (
-                  <GrpcResponsePane grpcState={grpcState} />
-                )}
-                {isRealtimeRequest && (
-                  <RealtimeResponsePane requestId={activeRequest._id} />
-                )}
-                {activeRequest && isRequest(activeRequest) && !isRealtimeRequest && (
-                  <ResponsePane activeRequestId={activeRequest._id} />
-                )}
-              </ErrorBoundary>
-            </Panel>
-          </>) : null}
+          {
+            activeRequest ? (<>
+              <PanelResizeHandle className={direction === 'horizontal' ? 'h-full w-[1px] bg-[--hl-md]' : 'w-full h-[1px] bg-[--hl-md]'} />
+              <Panel id="pane-two" className='pane-two theme--pane'>
+                <ErrorBoundary showAlert>
+                  {activeRequest && isGrpcRequest(activeRequest) && grpcState && (
+                    <GrpcResponsePane grpcState={grpcState} />
+                  )}
+                  {isRealtimeRequest && (
+                    <RealtimeResponsePane requestId={activeRequest._id} />
+                  )}
+                  {activeRequest && isRequest(activeRequest) && !isRealtimeRequest && (
+                    <ResponsePane activeRequestId={activeRequest._id} />
+                  )}
+                </ErrorBoundary>
+              </Panel>
+            </>) : null
+          }
+          <Outlet />
         </PanelGroup>
       </Panel>
-    </PanelGroup>
+    </PanelGroup >
   );
 };
 
@@ -1265,7 +1277,7 @@ const CollectionGridListItem = ({
           value={getRequestNameOrFallback({ ...item.doc, name })}
           name="request name"
           ariaLabel={label}
-          className="px-1 flex-1 hover:!bg-transparent"
+          className="px-1 flex-1"
           onSubmit={name => {
             if (isRequestGroup(item.doc)) {
               patchGroup(item.doc._id, { name });

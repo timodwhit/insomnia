@@ -29,7 +29,7 @@ export default defineConfig(({ mode }) => {
       outDir: path.join(__dirname, 'build'),
       assetsDir: './',
       brotliSize: false,
-      emptyOutDir: false,
+      emptyOutDir: true,
       rollupOptions: {
         input: {
           mainWindow: path.join(__dirname, 'src/index.html'),
@@ -39,6 +39,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     optimizeDeps: {
+      // exclude: ['@getinsomnia/node-libcurl', 'codemirror-graphql/utils/SchemaReference'],
       exclude: ['@getinsomnia/node-libcurl'],
       // these packages are only used in web worker, Vite won't be able to discover the import on the initial scan，so we need to include them here to let vite pre-bundle them
       // https://vitejs.dev/guide/dep-pre-bundling.html#customizing-the-behavior

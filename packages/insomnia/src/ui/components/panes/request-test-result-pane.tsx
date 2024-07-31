@@ -7,37 +7,17 @@ import { fuzzyMatch } from '../../../common/misc';
 
 type TargetTestType = 'all' | 'passed' | 'failed' | 'skipped';
 
-interface Props {
+interface RequestTestResultRowsProps {
   requestTestResults: RequestTestResult[];
+  resultFilter: string;
+  targetTests: string;
 }
 
-export const RequestTestResultPane: FC<Props> = ({
+const RequestTestResultRows: FC<RequestTestResultRowsProps> = ({
   requestTestResults,
-}) => {
-  const [targetTests, setTargetTests] = useState<TargetTestType>('all');
-  const [resultFilter, setResultFilter] = useState('');
-
-  const noTestFoundPage = (
-    <div className="text-center mt-5">
-      <div className="">No test results found</div>
-      <div className="text-sm text-neutral-400">
-        <b>
-          <a href="https://docs.insomnia.rest/insomnia/after-response-script">
-            Add test cases
-          </a>
-        </b> using scripting and run the request.
-      </div>
-    </div>
-  );
-  if (requestTestResults.length === 0) {
-    return noTestFoundPage;
-  }
-
-  const selectAllTests = () => setTargetTests('all');
-  const selectPassedTests = () => setTargetTests('passed');
-  const selectFailedTests = () => setTargetTests('failed');
-  const selectSkippedTests = () => setTargetTests('skipped');
-
+  resultFilter,
+  targetTests,
+}: RequestTestResultRowsProps) => {
   const testResultRows = requestTestResults
     .filter(result => {
       switch (targetTests) {
@@ -108,17 +88,77 @@ export const RequestTestResultPane: FC<Props> = ({
         </div>);
     });
 
+  return <>{testResultRows}</>;
+};
+
+interface Props {
+  requestTestResults: RequestTestResult[];
+}
+
+export const RequestTestResultPane: FC<Props> = ({
+  requestTestResults,
+}) => {
+  const [targetTests, setTargetTests] = useState<TargetTestType>('all');
+  const [resultFilter, setResultFilter] = useState('');
+
+  const noTestFoundPage = (
+    <div className="text-center mt-5">
+      <div className="">No test results found</div>
+      <div className="text-sm text-neutral-400">
+        <b>
+          <a href="https://docs.insomnia.rest/insomnia/after-response-script">
+            Add test cases
+          </a>
+        </b> using scripting and run the request.
+      </div>
+    </div>
+  );
+  if (requestTestResults.length === 0) {
+    return noTestFoundPage;
+  }
+
+  const selectAllTests = () => setTargetTests('all');
+  const selectPassedTests = () => setTargetTests('passed');
+  const selectFailedTests = () => setTargetTests('failed');
+  const selectSkippedTests = () => setTargetTests('skipped');
+
+  const filterClassnames = 'mx-1 w-[6rem] text-center rounded-md h-[--line-height-xxs] text-sm cursor-pointer outline-none select-none px-2 py-1 hover:bg-[rgba(var(--color-surprise-rgb),50%)] text-[--hl] aria-selected:text-[--color-font-surprise] hover:text-[--color-font-surprise] aria-selected:bg-[rgba(var(--color-surprise-rgb),40%)] transition-colors duration-300';
+  const activeFilterClassnames = 'text-white mx-1 w-[6rem] text-center rounded-md h-[--line-height-xxs] text-sm cursor-pointer outline-none select-none px-2 py-1 bg-[rgba(var(--color-surprise-rgb),50%)] text-[--hl] aria-selected:text-[--color-font-surprise] text-[--color-font-surprise] aria-selected:bg-[rgba(var(--color-surprise-rgb),40%)] transition-colors duration-300';
+
   return <>
     <div className='h-full flex flex-col divide-y divide-solid divide-[--hl-md]'>
       <div className='h-[calc(100%-var(--line-height-sm))]'>
-        <Toolbar className="flex items-center h-[--line-height-sm] flex-row text-[var(--font-size-sm)] box-border overflow-x-auto border-solid border-b border-b-[--hl-md]">
-          <button className="rounded-3xl btn btn--clicky-small mx-1 my-auto" onClick={selectAllTests} >All</button>
-          <button className="rounded-3xl btn btn--clicky-small mx-1 my-auto" onClick={selectPassedTests} >Passed</button>
-          <button className="rounded-3xl btn btn--clicky-small mx-1 my-auto" onClick={selectFailedTests} >Failed</button>
-          <button className="rounded-3xl btn btn--clicky-small mx-1 my-auto" onClick={selectSkippedTests} >Skipped</button>
+        {/* <TabList className="w-full flex-shrink-0 overflow-x-auto border-solid border-b border-b-[--hl-md] px-2 bg-[--color-bg] flex items-center gap-2 h-[--line-height-sm]" aria-label="Request scripts tabs">
+          <Tab
+            className="rounded-md flex-shrink-0 h-[--line-height-xxs] text-sm flex items-center justify-between cursor-pointer w-[10.5rem] outline-none select-none px-2 py-1 hover:bg-[rgba(var(--color-surprise-rgb),50%)] text-[--hl] aria-selected:text-[--color-font-surprise] hover:text-[--color-font-surprise] aria-selected:bg-[rgba(var(--color-surprise-rgb),40%)] transition-colors duration-300"
+            id="pre-request"
+          >
+            <div className='flex flex-1 items-center gap-2'>
+              <span>Pre-request</span>
+            </div>
+          </Tab>
+          <Tab
+            className="rounded-md flex-shrink-0 h-[--line-height-xxs] text-sm flex items-center justify-between cursor-pointer w-[10.5rem] outline-none select-none px-2 py-1 hover:bg-[rgba(var(--color-surprise-rgb),50%)] text-[--hl] aria-selected:text-[--color-font-surprise] hover:text-[--color-font-surprise] aria-selected:bg-[rgba(var(--color-surprise-rgb),40%)] transition-colors duration-300"
+            id="after-response"
+          >
+            <div className='flex flex-1 items-center gap-2'>
+              <span>After-response</span>
+            </div>
+          </Tab>
+        </TabList> */}
+
+        <Toolbar className="flex items-center h-[--line-height-sm] flex-row text-[var(--font-size-sm)] box-border overflow-x-auto border-solid border-b border-b-[--hl-md] pl-2">
+          <button className={targetTests === 'all' ? activeFilterClassnames : filterClassnames} onClick={selectAllTests} >All</button>
+          <button className={targetTests === 'passed' ? activeFilterClassnames : filterClassnames} onClick={selectPassedTests} >Passed</button>
+          <button className={targetTests === 'failed' ? activeFilterClassnames : filterClassnames} onClick={selectFailedTests} >Failed</button>
+          <button className={targetTests === 'skipped' ? activeFilterClassnames : filterClassnames} onClick={selectSkippedTests} >Skipped</button>
         </Toolbar>
         <div className="overflow-y-auto w-auto overflow-x-auto h-[calc(100%-var(--line-height-sm))]">
-          {testResultRows}
+          <RequestTestResultRows
+            requestTestResults={requestTestResults}
+            resultFilter={resultFilter}
+            targetTests={targetTests}
+          />
         </div>
       </div>
       <Toolbar className="flex items-center h-[--line-height-sm] flex-shrink-0 flex-row text-[var(--font-size-sm)] box-border overflow-x-auto">

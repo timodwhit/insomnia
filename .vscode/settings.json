@@ -6,7 +6,7 @@
     "*.njson": "ndjson"
   },
   "files.insertFinalNewline": true,
-  "editor.formatOnSave": true,
+  "editor.formatOnSave": false,
   "editor.formatOnSaveMode": "modifications",
   "editor.defaultFormatter": "vscode.typescript-language-features",
   "[json]": {
